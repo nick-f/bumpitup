@@ -4,7 +4,7 @@ if ARGV.size == 0
   $stderr.puts <<-TXT
     Usage:
     bumpitup <gem_name> <repo_name> [<repo_name>...]
-    Example: dep-bump awesome_gem first_repo second_repo
+    Example: bumpitup awesome_gem first_repo second_repo
     This will bump 'awesome_gem' in both first_repo and second_repo, and open PRs for both.
   TXT
   exit 1
@@ -28,8 +28,20 @@ def gem_version
   version.split('-').last.chomp
 end
 
+def read_config()
+  IO.foreach("#{ENV['HOME']}/.biu") do |line|
+    line.chomp!
+    key, value = line.split(nil, 2)
+    case key
+    when /^([#;]|$)/; # ignore line
+    when "BIU_BASE_DIR"; @base_dir = value.sub('~', ENV['HOME'])
+    when /^./; puts "#{key}: unknown key"
+    end
+  end
+end
+
 def base_dir
-  ENV['BIU_BASE_DIR'] || ENV['HOME']
+  @base_dir ||= ENV['HOME']
 end
 
 def commit_message
@@ -72,7 +84,7 @@ def update_repos
   @repos.each do |repo|
     puts "Attempting to bump #{@gem_name} in #{repo}"
     Dir.chdir repo do
-      sh "git checkout -b #{ENV['USER']}/bump-#{@gem_name}-6"
+      sh "git checkout -b #{ENV['USER']}/bump-#{@gem_name}"
 
       @old_version = gem_version
       sh "bundle update #{@gem_name} --conservative"
@@ -90,10 +102,11 @@ def update_repos
   end
 end
 
-begin
+# begin
   if sh "hub --version"
+    read_config
     update_repos
   end
-rescue
-  puts "Error bumping your gem"
-end
+# rescue
+#   puts "Error bumping your gem"
+# end
